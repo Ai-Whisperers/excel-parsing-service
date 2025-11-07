@@ -149,7 +149,7 @@ public class MetadataExtractorService {
 
                 namedRanges.add(nameInfo);
             } catch (Exception e) {
-                log.warn("Error extracting named range at index {}: {}", i, e.getMessage());
+                log.warn("Error extracting named range '{}': {}", name.getNameName(), e.getMessage());
             }
         }
 

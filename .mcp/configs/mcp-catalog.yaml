@@ -1,0 +1,192 @@
+# MCP Catalog - Available tools and capabilities
+# Used by MCP Gateway and AI clients
+
+version: "1.0"
+catalog:
+  name: "Excel POI Parser MCP Catalog"
+  description: "Two-layer microservice for parsing Excel files (.xls, .xlsx) with Apache POI"
+  version: "1.0.0"
+
+servers:
+  # Custom Excel Parser Server
+  excel-parser:
+    name: "Excel Parser"
+    description: "Parse Excel files using Java (Apache POI) + Python (aggregation) layers"
+    transport: stdio
+    capabilities:
+      tools:
+        - name: parse_excel_file
+          description: "Parse Excel file and return JSON format"
+          inputs:
+            file_path:
+              type: string
+              required: true
+              description: "Path to Excel file (.xls or .xlsx)"
+            sheet_name:
+              type: string
+              required: false
+              description: "Specific sheet name to parse"
+            region:
+              type: string
+              required: false
+              description: "Cell region (e.g., A1:D10)"
+          output:
+            type: object
+            format: json
+
+        - name: parse_excel_arrow
+          description: "Parse Excel file and return Apache Arrow binary format"
+          inputs:
+            file_path:
+              type: string
+              required: true
+            sheet_name:
+              type: string
+              required: false
+          output:
+            type: binary
+            format: arrow
+
+        - name: get_workbook_metadata
+          description: "Extract workbook metadata without full parse"
+          inputs:
+            file_path:
+              type: string
+              required: true
+          output:
+            type: object
+            fields:
+              - numberOfSheets
+              - sheets
+              - numberOfNames
+
+        - name: list_sheets
+          description: "Get list of sheet names from workbook"
+          inputs:
+            file_path:
+              type: string
+              required: true
+          output:
+            type: object
+            fields:
+              - sheets (array)
+              - count (integer)
+
+        - name: extract_sheet
+          description: "Extract data from specific sheet"
+          inputs:
+            file_path:
+              type: string
+              required: true
+            sheet_name:
+              type: string
+              required: true
+          output:
+            type: object
+            format: json
+
+        - name: extract_region
+          description: "Extract specific cell range from sheet"
+          inputs:
+            file_path:
+              type: string
+              required: true
+            sheet_name:
+              type: string
+              required: true
+            region:
+              type: string
+              required: true
+              pattern: "^[A-Z]+[0-9]+:[A-Z]+[0-9]+$"
+          output:
+            type: object
+            format: json
+
+  # Feedback Analyzer Server
+  feedback-analyzer:
+    name: "Feedback Analyzer"
+    description: "Analyze customer feedback from Excel files"
+    transport: stdio
+    capabilities:
+      tools:
+        - name: analyze_feedback
+          description: "Analyze customer feedback data"
+          inputs:
+            file_path:
+              type: string
+              required: true
+            feedback_column:
+              type: string
+              required: false
+          output:
+            type: object
+            format: json
+
+  # Standard MCP Servers
+  filesystem:
+    name: "Filesystem"
+    description: "Read-only access to Excel files and project code"
+    transport: stdio
+    image: "mcp/filesystem"
+    allowed_paths:
+      - /workspace/data
+      - /workspace/java-layer
+      - /workspace/python-layer
+      - /workspace/local
+    allowed_extensions:
+      - .xlsx
+      - .xls
+      - .java
+      - .py
+      - .json
+      - .yml
+      - .yaml
+      - .md
+    capabilities:
+      resources:
+        - read_file
+        - list_directory
+
+  fetch:
+    name: "Fetch"
+    description: "HTTP client for testing APIs"
+    transport: stdio
+    image: "mcp/fetch"
+    allowed_domains:
+      - localhost:8080
+      - localhost:8000
+      - 127.0.0.1:8080
+      - 127.0.0.1:8000
+    capabilities:
+      tools:
+        - name: fetch
+          description: "Make HTTP requests to Java/Python layers"
+          methods: [GET, POST, PUT, DELETE]
+          timeout: 300
+
+endpoints:
+  java_layer:
+    url: "http://localhost:8080"
+    description: "Java layer - Apache POI parsing engine"
+    health_check: "/api/v1/excel/health"
+    api_prefix: "/api/v1/excel"
+
+  python_layer:
+    url: "http://localhost:8000"
+    description: "Python layer - Data aggregation and formatting"
+    health_check: "/health"
+    api_prefix: "/api/v1/process"
+
+metadata:
+  author: "Excel POI Parser Team"
+  license: "MIT"
+  repository: "https://github.com/your-org/excel-poi-parser"
+  documentation: "https://github.com/your-org/excel-poi-parser/blob/main/README.md"
+  tags:
+    - excel
+    - parsing
+    - apache-poi
+    - python
+    - java
+    - microservice
+    - arrow

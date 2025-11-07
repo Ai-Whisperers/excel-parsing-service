@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "excel-parser": {
+      "command": "python",
+      "args": [".mcp/servers/excel-parser/server.py"],
+      "env": {
+        "JAVA_LAYER_URL": "http://localhost:8080",
+        "PYTHON_LAYER_URL": "http://localhost:8000"
+      }
+    },
+    "feedback-analyzer": {
+      "command": "python",
+      "args": [".mcp/servers/feedback-analyzer/server.py"],
+      "env": {
+        "PYTHON_LAYER_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

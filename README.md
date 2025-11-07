@@ -1,5 +1,6 @@
 # Excel POI Parser Service
 
+Input: Any Excel (.xls or .xlsx file) - Output: Arrow/JSON schema of the parsed document
 A two-layer microservice architecture for parsing Excel files using Apache POI (Java) and aggregating/formatting results with Python (Arrow/JSON).
 
 ## Architecture
