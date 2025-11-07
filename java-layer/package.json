@@ -1,0 +1,13 @@
+{
+  "name": "java-layer",
+  "version": "1.0.0",
+  "description": "Java layer for Excel parsing using Apache POI",
+  "private": true,
+  "scripts": {
+    "install:maven": "mvn clean install -DskipTests",
+    "dev": "mvn spring-boot:run",
+    "build": "mvn clean package",
+    "test": "mvn test",
+    "clean": "mvn clean"
+  }
+}

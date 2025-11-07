@@ -1,0 +1,27 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: excel-poi-parser-java
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+logging:
+  level:
+    root: INFO
+    com.customeranalysis.excel: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Parser Configuration
+parser:
+  max-rows: 100000
+  max-columns: 1000
+  enable-formula-evaluation: true
+  enable-style-extraction: true

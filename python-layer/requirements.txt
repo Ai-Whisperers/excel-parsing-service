@@ -1,0 +1,28 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Arrow & Data Processing
+pyarrow==15.0.0
+pandas==2.2.0
+numpy==1.26.3
+
+# HTTP Client for Java Layer
+httpx==0.26.0
+aiohttp==3.9.1
+
+# Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Utilities
+python-json-logger==2.0.7
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.23.3
+
+# Code Quality
+black==23.12.1
+ruff==0.1.11

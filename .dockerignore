@@ -1,0 +1,38 @@
+# Node modules
+node_modules
+.pnpm-store
+
+# Java
+java-layer/target
+java-layer/.mvn
+
+# Python
+python-layer/__pycache__
+python-layer/**/__pycache__
+python-layer/.pytest_cache
+python-layer/**/*.pyc
+python-layer/.venv
+python-layer/venv
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Environment
+.env
+.env.local

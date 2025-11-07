@@ -1,0 +1,48 @@
+# pnpm
+node_modules
+.pnpm-store
+pnpm-lock.yaml
+
+# Java / Maven
+java-layer/target/
+java-layer/.mvn/
+java-layer/*.iml
+*.class
+
+
+/local
+
+# Python
+python-layer/__pycache__/
+python-layer/**/__pycache__/
+python-layer/.pytest_cache/
+python-layer/**/*.pyc
+python-layer/.venv/
+python-layer/venv/
+python-layer/*.egg-info/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+build/

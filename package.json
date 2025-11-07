@@ -1,0 +1,41 @@
+{
+  "name": "excel-poi-parser",
+  "version": "1.0.0",
+  "description": "Two-layer Excel parser microservice with Java (POI) and Python (Arrow/JSON formatting)",
+  "private": true,
+  "scripts": {
+    "install:all": "pnpm install && pnpm --filter java-layer install:maven && pnpm --filter python-layer install:python",
+    "dev": "pnpm --parallel --filter java-layer dev --filter python-layer dev",
+    "dev:java": "pnpm --filter java-layer dev",
+    "dev:python": "pnpm --filter python-layer dev",
+    "build": "pnpm --filter java-layer build && pnpm --filter python-layer build",
+    "build:java": "pnpm --filter java-layer build",
+    "build:python": "pnpm --filter python-layer build",
+    "test": "pnpm --parallel --filter java-layer test --filter python-layer test",
+    "test:java": "pnpm --filter java-layer test",
+    "test:python": "pnpm --filter python-layer test",
+    "clean": "pnpm --parallel --filter java-layer clean --filter python-layer clean",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "lint:python": "pnpm --filter python-layer lint",
+    "format:python": "pnpm --filter python-layer format"
+  },
+  "workspaces": [
+    "java-layer",
+    "python-layer"
+  ],
+  "keywords": [
+    "excel",
+    "parser",
+    "apache-poi",
+    "arrow",
+    "microservice"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "pnpm": ">=8.0.0",
+    "node": ">=18.0.0"
+  }
+}

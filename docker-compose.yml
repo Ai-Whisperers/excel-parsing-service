@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  java-layer:
+    build:
+      context: ./java-layer
+      dockerfile: Dockerfile
+    container_name: excel-parser-java
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/excel/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - excel-parser-network
+
+  python-layer:
+    build:
+      context: ./python-layer
+      dockerfile: Dockerfile
+    container_name: excel-parser-python
+    ports:
+      - "8000:8000"
+    environment:
+      - JAVA_LAYER_URL=http://java-layer:8080
+    depends_on:
+      java-layer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - excel-parser-network
+
+networks:
+  excel-parser-network:
+    driver: bridge
