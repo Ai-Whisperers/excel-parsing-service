@@ -23,9 +23,12 @@ services:
       dockerfile: Dockerfile
     container_name: excel-parser-python
     ports:
-      - "8000:8000"
+      - "8000:8000"  # REST API (control plane)
+      - "8815:8815"  # Arrow Flight gRPC (data plane)
     environment:
       - JAVA_LAYER_URL=http://java-layer:8080
+      - FLIGHT_HOST=0.0.0.0
+      - FLIGHT_PORT=8815
     depends_on:
       java-layer:
         condition: service_healthy

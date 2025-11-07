@@ -1,17 +1,24 @@
 """
 Main FastAPI application
 Python layer - aggregates and formats data from Java layer to Arrow/JSON
+
+Hybrid Architecture:
+- Control Plane (REST): Authentication, session management, flight preparation
+- Data Plane (gRPC): High-throughput Arrow Flight streaming
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from typing import Optional
 import logging
+import threading
 
 from app.services.java_client import JavaLayerClient
 from app.services.aggregator import DataAggregator
 from app.services.arrow_formatter import ArrowFormatter
 from app.services.json_formatter import JSONFormatter
+from app.services.flight_server import ExcelFlightServer
+from app.services.flight_rest_bridge import router as flight_router, set_flight_server
 from app.models.schemas import ParseResponse, ExcelProcessRequest
 from app.config import settings
 
@@ -24,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Excel Parser - Python Aggregation Layer",
-    description="Aggregates and formats Excel data to Arrow/JSON",
-    version="1.0.0"
+    description="Hybrid architecture: REST (control) + Arrow Flight (data streaming)",
+    version="2.0.0"
 )
 
 # Initialize services
@@ -34,13 +41,36 @@ aggregator = DataAggregator()
 arrow_formatter = ArrowFormatter()
 json_formatter = JSONFormatter()
 
+# Initialize Arrow Flight server (data plane)
+flight_location = f"grpc://{settings.flight_host}:{settings.flight_port}"
+flight_server = ExcelFlightServer(flight_location)
+set_flight_server(flight_server)
+
+# Include Flight REST bridge routes
+app.include_router(flight_router)
+
 
 @app.get("/")
 async def root():
     return {
         "service": "Excel Parser - Python Layer",
-        "version": "1.0.0",
-        "status": "running"
+        "version": "2.0.0",
+        "architecture": "Hybrid (REST + Arrow Flight)",
+        "status": "running",
+        "endpoints": {
+            "control_plane": {
+                "rest_api": f"http://localhost:{settings.api_port}",
+                "health": "/health",
+                "legacy_upload": "/api/v1/process/excel",
+                "flight_prepare": "/api/v1/flight/prepare",
+                "flight_list": "/api/v1/flight/list"
+            },
+            "data_plane": {
+                "grpc_streaming": f"grpc://localhost:{settings.flight_port}",
+                "protocol": "Arrow Flight",
+                "example": "/api/v1/flight/example"
+            }
+        }
     }
 
 
@@ -139,6 +169,20 @@ async def process_excel_from_path(request: ExcelProcessRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def start_flight_server_background():
+    """Start Arrow Flight server in background thread"""
+    logger.info(f"Starting Arrow Flight server on {flight_location}")
+    flight_server.serve()
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    # Start Flight server in background thread (data plane)
+    flight_thread = threading.Thread(target=start_flight_server_background, daemon=True)
+    flight_thread.start()
+    logger.info("Arrow Flight server thread started")
+
+    # Start FastAPI server (control plane)
+    logger.info(f"Starting REST API on {settings.api_host}:{settings.api_port}")
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port)
