@@ -128,10 +128,9 @@ public class MetadataExtractorService {
     private List<Map<String, Object>> extractNamedRanges(Workbook workbook) {
         List<Map<String, Object>> namedRanges = new ArrayList<>();
 
-        int numNames = workbook.getNumberOfNames();
-        for (int i = 0; i < numNames; i++) {
+        List<? extends Name> allNames = workbook.getAllNames();
+        for (Name name : allNames) {
             try {
-                Name name = workbook.getName(i);
                 Map<String, Object> nameInfo = new HashMap<>();
 
                 nameInfo.put("name", name.getNameName());
