@@ -131,7 +131,7 @@ public class MetadataExtractorService {
         int numNames = workbook.getNumberOfNames();
         for (int i = 0; i < numNames; i++) {
             try {
-                Name name = workbook.getNameAt(i);
+                Name name = workbook.getName(i);
                 Map<String, Object> nameInfo = new HashMap<>();
 
                 nameInfo.put("name", name.getNameName());
@@ -221,8 +221,8 @@ public class MetadataExtractorService {
 
                 if (customProperties != null) {
                     var props = customProperties.getUnderlyingProperties();
-                    if (props != null && props.getProperties() != null) {
-                        for (var prop : props.getProperties()) {
+                    if (props != null && props.getPropertyList() != null) {
+                        for (var prop : props.getPropertyList()) {
                             try {
                                 String name = prop.getName();
                                 Object value = null;
