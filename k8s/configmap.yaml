@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: excel-parser-config
+  namespace: excel-parser
+data:
+  # Java layer configuration
+  SPRING_PROFILES_ACTIVE: "docker"
+  MAX_ROWS: "100000"
+  MAX_COLUMNS: "1000"
+
+  # Python layer configuration
+  JAVA_LAYER_URL: "http://java-layer:8080"
+  FLIGHT_HOST: "0.0.0.0"
+  FLIGHT_PORT: "8815"
