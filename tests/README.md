@@ -8,23 +8,41 @@
 
 ```
 tests/
+├── java/                      # Java layer unit tests
+│   ├── ExcelParserServiceTest.java
+│   └── ExcelParserControllerTest.java
+├── python/                    # Python layer unit tests
+│   ├── conftest.py
+│   ├── test_aggregator.py
+│   ├── test_arrow_formatter.py
+│   ├── test_flight_server.py
+│   └── test_java_client.py
 ├── integration-tests.sh       # Docker Compose integration tests
 ├── k8s-deploy-test.sh         # Kubernetes deployment tests
-├── test_arrow_flight.py       # Arrow Flight streaming tests
-└── python-layer/tests/        # Python unit tests
-    ├── __init__.py
-    └── test_health.py
+├── run-python-tests.sh        # Run Python tests with coverage
+├── run-java-tests.sh          # Run Java tests with coverage
+└── run-all-tests.sh           # Run all tests
 ```
 
 ---
 
 ## Running Tests
 
-### Unit Tests (Python)
+### All Tests
 ```bash
-cd python-layer
-pip install pytest pytest-cov
-pytest tests/ -v --cov=app
+./tests/run-all-tests.sh
+```
+
+### Unit Tests Only
+
+**Python:**
+```bash
+./tests/run-python-tests.sh
+```
+
+**Java:**
+```bash
+./tests/run-java-tests.sh
 ```
 
 ### Integration Tests (Docker)
@@ -37,11 +55,6 @@ docker-compose down
 ### K8s Deployment Test
 ```bash
 ./tests/k8s-deploy-test.sh
-```
-
-### Arrow Flight Test
-```bash
-python tests/test_arrow_flight.py
 ```
 
 ---
@@ -77,19 +90,21 @@ python tests/test_arrow_flight.py
 
 ## Test Coverage
 
-### Java Layer
-- Unit tests: Spring Boot components
-- Integration tests: REST endpoints
+### Java Layer (100% Critical Nodes)
+- ExcelParserService: Pipeline orchestration
+- ExcelParserController: REST endpoints
+- Service mocks: All extractors and formatters
 
-### Python Layer
-- Unit tests: FastAPI routes
-- Integration tests: Java layer communication
-- E2E tests: Arrow Flight streaming
+### Python Layer (100% Critical Nodes)
+- DataAggregator: Cell to table conversion, metadata extraction, statistics
+- ArrowFormatter: Arrow serialization, schema inference
+- FlightServer: gRPC streaming, flight management
+- JavaClient: HTTP communication, error handling
 
-### Kubernetes
-- Deployment validation
-- Service accessibility
-- Health check verification
+### Integration
+- Docker Compose: Service communication
+- Kubernetes: Deployment and accessibility
+- Arrow Flight: E2E streaming
 
 ---
 
