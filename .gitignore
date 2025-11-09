@@ -1,5 +1,5 @@
 # pnpm
-node_modules
+node_modules/
 .pnpm-store
 pnpm-lock.yaml
 
@@ -8,9 +8,6 @@ java-layer/target/
 java-layer/.mvn/
 java-layer/*.iml
 *.class
-
-
-/local
 
 # Python
 python-layer/__pycache__/
@@ -46,3 +43,13 @@ logs/
 # Build artifacts
 dist/
 build/
+local/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+test-results/
+*.xml
