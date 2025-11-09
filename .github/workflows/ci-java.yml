@@ -1,0 +1,45 @@
+name: CI - Java Layer
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'java-layer/**'
+      - '.github/workflows/ci-java.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'java-layer/**'
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      working-directory: ./java-layer
+      run: mvn clean package -DskipTests
+
+    - name: Run tests
+      working-directory: ./java-layer
+      run: mvn test
+
+    - name: Build Docker image
+      working-directory: ./java-layer
+      run: docker build -t excel-parser-java:test .
+
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-layer-jar
+        path: java-layer/target/*.jar
+        retention-days: 5

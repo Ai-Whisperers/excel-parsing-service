@@ -1,0 +1,66 @@
+name: CD - Deploy to Kubernetes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_JAVA: ${{ github.repository }}/java-layer
+  IMAGE_NAME_PYTHON: ${{ github.repository }}/python-layer
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Log in to registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (Java)
+      id: meta-java
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_JAVA }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=sha
+
+    - name: Build and push Java image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./java-layer
+        push: true
+        tags: ${{ steps.meta-java.outputs.tags }}
+        labels: ${{ steps.meta-java.outputs.labels }}
+
+    - name: Extract metadata (Python)
+      id: meta-python
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PYTHON }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=sha
+
+    - name: Build and push Python image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./python-layer
+        push: true
+        tags: ${{ steps.meta-python.outputs.tags }}
+        labels: ${{ steps.meta-python.outputs.labels }}

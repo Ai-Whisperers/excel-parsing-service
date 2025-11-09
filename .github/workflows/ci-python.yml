@@ -1,0 +1,43 @@
+name: CI - Python Layer
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'python-layer/**'
+      - '.github/workflows/ci-python.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'python-layer/**'
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      working-directory: ./python-layer
+      run: |
+        pip install -r requirements.txt
+        pip install pytest pytest-cov ruff
+
+    - name: Lint with ruff
+      working-directory: ./python-layer
+      run: ruff check app/ --select=E,F,I --ignore=E501
+
+    - name: Run tests
+      working-directory: ./python-layer
+      run: pytest tests/ -v --cov=app --cov-report=xml
+
+    - name: Build Docker image
+      working-directory: ./python-layer
+      run: docker build -t excel-parser-python:test .
