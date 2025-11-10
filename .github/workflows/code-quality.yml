@@ -1,0 +1,255 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run quality checks weekly on Wednesday at 10:00 UTC
+    - cron: '0 10 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  java-quality:
+    name: Java Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Run Checkstyle
+      working-directory: ./java-layer
+      run: mvn checkstyle:check
+      continue-on-error: true
+
+    - name: Run PMD
+      working-directory: ./java-layer
+      run: mvn pmd:check
+      continue-on-error: true
+
+    - name: Run SpotBugs
+      working-directory: ./java-layer
+      run: mvn spotbugs:check
+      continue-on-error: true
+
+    - name: Generate quality reports
+      working-directory: ./java-layer
+      run: mvn site -DskipTests
+
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-quality-reports
+        path: java-layer/target/site/
+        retention-days: 30
+
+  python-quality:
+    name: Python Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black mypy bandit pylint radon
+
+    - name: Run Ruff (linting)
+      working-directory: ./python-layer
+      run: |
+        echo "## 🔍 Ruff Linting Results" >> $GITHUB_STEP_SUMMARY
+        ruff check app/ tests/ --output-format=github --statistics || true
+        ruff check app/ tests/ --statistics >> $GITHUB_STEP_SUMMARY || true
+
+    - name: Check code formatting (Black)
+      working-directory: ./python-layer
+      run: |
+        echo "## 🎨 Code Formatting Check" >> $GITHUB_STEP_SUMMARY
+        black --check app/ tests/ --diff >> $GITHUB_STEP_SUMMARY || true
+
+    - name: Run type checking (mypy)
+      working-directory: ./python-layer
+      run: |
+        echo "## 🔬 Type Checking Results" >> $GITHUB_STEP_SUMMARY
+        mypy app/ --ignore-missing-imports --no-error-summary >> $GITHUB_STEP_SUMMARY || true
+      continue-on-error: true
+
+    - name: Security analysis (Bandit)
+      working-directory: ./python-layer
+      run: |
+        echo "## 🔒 Security Analysis" >> $GITHUB_STEP_SUMMARY
+        bandit -r app/ -f screen >> $GITHUB_STEP_SUMMARY || true
+      continue-on-error: true
+
+    - name: Code complexity analysis (Radon)
+      working-directory: ./python-layer
+      run: |
+        echo "## 📊 Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "### Cyclomatic Complexity" >> $GITHUB_STEP_SUMMARY
+        radon cc app/ -a -s >> $GITHUB_STEP_SUMMARY || true
+        echo "### Maintainability Index" >> $GITHUB_STEP_SUMMARY
+        radon mi app/ -s >> $GITHUB_STEP_SUMMARY || true
+
+    - name: Generate detailed report with Pylint
+      working-directory: ./python-layer
+      run: |
+        pylint app/ --output-format=text --reports=y > pylint-report.txt || true
+        echo "## 📋 Pylint Score" >> $GITHUB_STEP_SUMMARY
+        tail -n 10 pylint-report.txt >> $GITHUB_STEP_SUMMARY
+      continue-on-error: true
+
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-quality-reports
+        path: python-layer/pylint-report.txt
+        retention-days: 30
+
+  test-coverage:
+    name: Test Coverage Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      working-directory: ./python-layer
+      run: |
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+
+    - name: Make test scripts executable
+      run: chmod +x tests/*.sh
+
+    - name: Run Java tests with coverage
+      working-directory: ./java-layer
+      run: mvn clean test jacoco:report
+
+    - name: Run Python tests with coverage
+      working-directory: ./python-layer
+      run: pytest tests/ -v --cov=app --cov-report=xml --cov-report=html --cov-report=term
+
+    - name: Generate coverage summary
+      run: |
+        echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f "java-layer/target/site/jacoco/jacoco.csv" ]; then
+          echo "### Java Coverage" >> $GITHUB_STEP_SUMMARY
+          # Parse JaCoCo CSV for summary
+          awk -F',' 'NR>1 {missed+=$4+$6+$8; covered+=$5+$7+$9} END {total=missed+covered; if(total>0) printf "**%.2f%%** coverage (%d/%d instructions covered)\n", (covered/total)*100, covered, total}' java-layer/target/site/jacoco/jacoco.csv >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f "python-layer/htmlcov/index.html" ]; then
+          echo "### Python Coverage" >> $GITHUB_STEP_SUMMARY
+          grep -o '<span class="pc_cov">[0-9]*%</span>' python-layer/htmlcov/index.html | head -1 | sed 's/<[^>]*>//g' | xargs -I {} echo "**{}** coverage" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload Java coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-coverage
+        path: java-layer/target/site/jacoco/
+        retention-days: 30
+
+    - name: Upload Python coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-coverage
+        path: python-layer/htmlcov/
+        retention-days: 30
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./java-layer/target/site/jacoco/jacoco.xml,./tests/coverage/python-coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # Performance checks skipped in CI - requires Docker runtime
+  # Run locally with docker-compose for performance testing
+  # performance-check:
+  #   name: Performance Benchmarks
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 20
+  #   if: github.event_name == 'pull_request'
+  #
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
+  #
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
+  #
+  #   - name: Build images
+  #     run: |
+  #       docker build -t excel-parser-java:perf ./java-layer
+  #       docker build -t excel-parser-python:perf ./python-layer
+  #
+  #   - name: Start services
+  #     run: docker compose up -d
+  #
+  #   - name: Wait for services
+  #     run: |
+  #       timeout 60 bash -c 'until curl -f http://localhost:8080/api/v1/excel/health; do sleep 2; done'
+  #       timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+  #
+  #   - name: Run performance tests
+  #     run: |
+  #       echo "## ⚡ Performance Metrics" >> $GITHUB_STEP_SUMMARY
+  #       echo "### Service Health Check Response Times" >> $GITHUB_STEP_SUMMARY
+  #
+  #       # Java service
+  #       JAVA_TIME=$(curl -o /dev/null -s -w '%{time_total}\n' http://localhost:8080/api/v1/excel/health)
+  #       echo "- Java Layer: ${JAVA_TIME}s" >> $GITHUB_STEP_SUMMARY
+  #
+  #       # Python service
+  #       PYTHON_TIME=$(curl -o /dev/null -s -w '%{time_total}\n' http://localhost:8000/health)
+  #       echo "- Python Layer: ${PYTHON_TIME}s" >> $GITHUB_STEP_SUMMARY
+  #
+  #   - name: Cleanup
+  #     if: always()
+  #     run: docker compose down -v

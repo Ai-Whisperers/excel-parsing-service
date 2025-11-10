@@ -1,0 +1,173 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans weekly on Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java', 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Set up JDK 17 (Java only)
+      if: matrix.language == 'java'
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build Java Layer
+      if: matrix.language == 'java'
+      working-directory: ./java-layer
+      run: mvn clean package -DskipTests
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Safety
+      run: pip install safety
+
+    - name: Scan Python dependencies
+      working-directory: ./python-layer
+      run: |
+        pip install -r requirements.txt
+        safety check --json --output safety-report.json || true
+        safety check || echo "⚠️ Vulnerabilities found in Python dependencies"
+      continue-on-error: true
+
+    - name: Upload Python scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-security-scan
+        path: python-layer/safety-report.json
+        retention-days: 30
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Scan Java dependencies with OWASP
+      working-directory: ./java-layer
+      run: |
+        mvn org.owasp:dependency-check-maven:check \
+          -DskipTests \
+          -DfailBuildOnCVSS=7 \
+          -DsuppressionFiles=dependency-check-suppressions.xml || true
+      continue-on-error: true
+
+    - name: Upload Java scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-security-scan
+        path: java-layer/target/dependency-check-report.html
+        retention-days: 30
+
+  # Container scanning skipped in CI - requires Docker runtime
+  # Run container scans locally or in CD pipeline with Docker support
+  # container-scan:
+  #   name: Container Image Scanning
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 20
+  #
+  #   strategy:
+  #     matrix:
+  #       layer: [ 'java-layer', 'python-layer' ]
+  #
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
+  #
+  #   - name: Build Docker image
+  #     run: docker build -t ${{ matrix.layer }}:scan ./${{ matrix.layer }}
+  #
+  #   - name: Run Trivy vulnerability scanner
+  #     uses: aquasecurity/trivy-action@master
+  #     with:
+  #       image-ref: '${{ matrix.layer }}:scan'
+  #       format: 'sarif'
+  #       output: 'trivy-results.sarif'
+  #       severity: 'CRITICAL,HIGH'
+  #
+  #   - name: Upload Trivy results to GitHub Security
+  #     uses: github/codeql-action/upload-sarif@v3
+  #     if: always()
+  #     with:
+  #       sarif_file: 'trivy-results.sarif'
+  #       category: "trivy-${{ matrix.layer }}"
+  #
+  #   - name: Run Trivy for detailed report
+  #     uses: aquasecurity/trivy-action@master
+  #     with:
+  #       image-ref: '${{ matrix.layer }}:scan'
+  #       format: 'table'
+  #       exit-code: '0'
+  #       severity: 'CRITICAL,HIGH,MEDIUM'
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: TruffleHog Secret Scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --only-verified
