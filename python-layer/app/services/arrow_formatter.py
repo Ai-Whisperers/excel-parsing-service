@@ -57,15 +57,30 @@ class ArrowFormatter:
         """Write Arrow tables to IPC stream"""
         buffer = BytesIO()
 
-        # For multiple sheets, we'll concatenate them with metadata
-        # In practice, you might want to use Arrow Flight or Parquet with multiple tables
+        if not tables:
+            return buffer.getvalue()
 
-        # For simplicity, writing the first sheet
-        # In production, consider using Parquet datasets for multiple tables
-        if tables:
-            first_table = list(tables.values())[0]
-            writer = ipc.new_stream(buffer, first_table.schema)
-            writer.write_table(first_table)
+        # For single sheet, write directly without sheet_name column
+        if len(tables) == 1:
+            table = list(tables.values())[0]
+            writer = ipc.new_stream(buffer, table.schema)
+            writer.write_table(table)
             writer.close()
+            return buffer.getvalue()
+
+        # For multiple sheets, concatenate them with a sheet_name column
+        combined_tables = []
+        for sheet_name, table in tables.items():
+            # Add sheet_name column to track origin
+            sheet_col = pa.array([sheet_name] * table.num_rows)
+            table_with_sheet = table.append_column("_sheet_name", sheet_col)
+            combined_tables.append(table_with_sheet)
+
+        # Concatenate all tables vertically with schema promotion for different columns
+        final_table = pa.concat_tables(combined_tables, promote_options="default")
+
+        writer = ipc.new_stream(buffer, final_table.schema)
+        writer.write_table(final_table)
+        writer.close()
 
         return buffer.getvalue()

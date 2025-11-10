@@ -25,6 +25,7 @@ class ExcelFlightServer(flight.FlightServerBase):
 
     def __init__(self, location="grpc://0.0.0.0:8815", **kwargs):
         super(ExcelFlightServer, self).__init__(location, **kwargs)
+        self.location = location  # Store location for FlightInfo creation
         self.java_client = JavaLayerClient(settings.java_layer_url)
         self.aggregator = DataAggregator()
         self.arrow_formatter = ArrowFormatter()
