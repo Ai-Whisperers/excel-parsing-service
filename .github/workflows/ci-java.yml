@@ -33,9 +33,10 @@ jobs:
       working-directory: ./java-layer
       run: mvn test
 
-    - name: Build Docker image
-      working-directory: ./java-layer
-      run: docker build -t excel-parser-java:test .
+    # Docker build skipped in CI - use cd-deploy.yml for container builds
+    # - name: Build Docker image
+    #   working-directory: ./java-layer
+    #   run: docker build -t excel-parser-java:test .
 
     - name: Archive build artifacts
       uses: actions/upload-artifact@v4

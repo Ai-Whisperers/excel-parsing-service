@@ -38,6 +38,7 @@ jobs:
       working-directory: ./python-layer
       run: pytest tests/ -v --cov=app --cov-report=xml
 
-    - name: Build Docker image
-      working-directory: ./python-layer
-      run: docker build -t excel-parser-python:test .
+    # Docker build skipped in CI - use cd-deploy.yml for container builds
+    # - name: Build Docker image
+    #   working-directory: ./python-layer
+    #   run: docker build -t excel-parser-python:test .
